@@ -36,53 +36,47 @@ class Program
 {
     static HttpClient sourceClient = new HttpClient();
     static HttpClient targetClient = new HttpClient();
+    static HttpClient httpClient = new HttpClient();
     static Program()
     {
-        sourceClient.BaseAddress = new Uri("http://localhost:5221/");
-        sourceClient.DefaultRequestHeaders.Accept.Clear();
-        sourceClient.DefaultRequestHeaders.Accept.Add(
-            new MediaTypeWithQualityHeaderValue("application/json"));
-
-        targetClient.BaseAddress = new Uri("http://localhost:5220/");
-        targetClient.DefaultRequestHeaders.Accept.Clear();
-        targetClient.DefaultRequestHeaders.Accept.Add(
+        httpClient.BaseAddress = new Uri("http://localhost:5221/");
+        httpClient.DefaultRequestHeaders.Accept.Clear();
+        httpClient.DefaultRequestHeaders.Accept.Add(
             new MediaTypeWithQualityHeaderValue("application/json"));
     }
    
     static void Main()
     {
-        // Console.WriteLine("Hello, World!");
         RunAsync().GetAwaiter().GetResult();
-        
     }
 
-  
     //Get Methods
-    static async Task<SecurityPrinciple[]> GetSecurityPrinciples(string path, HttpClient client)
+    static async Task<SecurityPrinciple[]> GetSecurityPrinciples(string path)
     {
         SecurityPrinciple[] securityPrinciples = new SecurityPrinciple[0];
-        HttpResponseMessage response = await client.GetAsync(path);
+        HttpResponseMessage response = await httpClient.GetAsync(path);
         if (response.IsSuccessStatusCode)
         {
             securityPrinciples = await response.Content.ReadAsAsync<SecurityPrinciple[]>();
         }
         return securityPrinciples;
     }
+
     //Get all of the members from all of the groups.
-    static async Task<GroupMember[]> GetAllGroupMembers(string path, HttpClient client)
+    static async Task<GroupMember[]> GetAllGroupMembers(string path)
     {
         GroupMember[] groupMembers = new GroupMember[0];
-        HttpResponseMessage response = await client.GetAsync(path);
+        HttpResponseMessage response = await httpClient.GetAsync(path);
         if (response.IsSuccessStatusCode)
         {
             groupMembers = await response.Content.ReadAsAsync<GroupMember[]>();
         }
         return groupMembers;
     }
-    static async Task<vGroupMembers[]> GetAllOfAGroupsMembers(string path, HttpClient client)
+    static async Task<vGroupMembers[]> GetAllOfAGroupsMembers(string path)
     {
         vGroupMembers[] groupMembers = new vGroupMembers[0];
-        HttpResponseMessage response = await client.GetAsync(path);
+        HttpResponseMessage response = await httpClient.GetAsync(path);
         if (response.IsSuccessStatusCode)
         {
             groupMembers = await response.Content.ReadAsAsync<vGroupMembers[]>();
@@ -91,9 +85,11 @@ class Program
     }
 
     //Delete Methods.
-    static async Task<string> DeleteSecurityPrincipleByDisplayName(string path, HttpClient client)
+
+    //Havent tested this method!!!!!!!!!!!!!!!!!!!!!!!
+    static async Task<string> DeleteSecurityPrincipleByDisplayName(string path)
     {
-        HttpResponseMessage response = await client.DeleteAsync(path);
+        HttpResponseMessage response = await httpClient.DeleteAsync(path);
         if (response.IsSuccessStatusCode)
         {
             return "success";
@@ -103,9 +99,9 @@ class Program
             return "failed";
         }
     }
-    static async Task<string> DeleteGroupMemberById(string path, HttpClient client)
+    static async Task<string> DeleteGroupMemberById(string path)
     {
-        HttpResponseMessage response = await client.DeleteAsync(path);
+        HttpResponseMessage response = await httpClient.DeleteAsync(path);
         if (response.IsSuccessStatusCode)
         {
             return "success";
@@ -117,10 +113,12 @@ class Program
     }
 
     //Post Methods.
-    static async Task<string> CreateSecurityPrinciple(string path, HttpClient client, HttpContent content)
+
+    //Untested!!!!!!!!!!!!!
+    static async Task<string> CreateSecurityPrinciple(string path, HttpContent content)
     {
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        HttpResponseMessage response = await client.PostAsync(path, content);
+        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        HttpResponseMessage response = await httpClient.PostAsync(path, content);
         if (response.IsSuccessStatusCode)
         {
             return "success";
@@ -130,10 +128,11 @@ class Program
             return "failed";
         }
     }
-    static async Task<string> CreateGroupMember(string path, HttpClient client)
+    //Untested!!!!!!!!!!!!!!!!
+    static async Task<string> CreateGroupMember(string path)
     {
         HttpContent content = null;
-        HttpResponseMessage response = await client.PostAsync(path, content);
+        HttpResponseMessage response = await httpClient.PostAsync(path, content);
         if (response.IsSuccessStatusCode)
         {
             return "success";
@@ -150,10 +149,10 @@ class Program
         {
 
             //Stores all the SecurityPrinciples from both Source and Target.
-            var sourcePrinciples = await GetSecurityPrinciples("api/SecurityPrinciple", sourceClient);
-            var targetPrinciples = await GetSecurityPrinciples("api/SecurityPrinciple", targetClient);
+            var sourcePrinciples = await GetSecurityPrinciples("api/SecurityPrinciple/GetSecurityPrinciples?DbContext=S");
+            var targetPrinciples = await GetSecurityPrinciples("api/SecurityPrinciple/GetSecurityPrinciples?DbContext=T");
 
-            //Seperate source into Users, Groups and Service Principles.
+            //Seperate into Users, Groups and Service Principles.
             var sourceUsers = sourcePrinciples.Where<SecurityPrinciple>(p => p.principleType == "user").ToList();
             var sourceGroups = sourcePrinciples.Where<SecurityPrinciple>(p => p.principleType == "Group").ToList();
             var sourceServicePrinciples = sourcePrinciples.Where<SecurityPrinciple>(p => p.principleType == "Service Principle").ToList();
@@ -171,19 +170,7 @@ class Program
             var targetGroupsDisplayNames = targetGroups.Select(p => p.displayName).ToList();
             var targetServicePrinciplesDisplayNames = targetServicePrinciples.Select(p => p.displayName).ToList();
 
-            //Comparing sourceUsers with targetUsers.
-            //Check if targetUser exists in sourceUsers, if not, delete it.
-            foreach (SecurityPrinciple targetUser in targetUsers)
-            {
-                if (sourceUsersDisplayNames.Contains(targetUser.displayName))
-                {
-                    continue;
-                }
-                else
-                {
-                    await DeleteSecurityPrincipleByDisplayName($"api/SecurityPrinciple?displayName={targetUser.displayName}", targetClient);
-                }
-            }
+            // Security Principle Table Adds
 
             //Check if sourceUser exists in TargetUsers, if not, add it.
             foreach (SecurityPrinciple sourceUser in sourceUsers)
@@ -196,24 +183,9 @@ class Program
                 {
                     sourceUser.Id = 0;
                     var content = JsonContent.Create<SecurityPrinciple>(sourceUser);
-                    await CreateSecurityPrinciple($"api/SecurityPrinciple/CreateSecurityPrinciple", targetClient, content);
+                    await CreateSecurityPrinciple($"api/SecurityPrinciple/CreateSecurityPrinciple?DbContext=T", content);
                 }
             }
-
-            //Comparing sourceGroups with targetGroups.
-            //Check if targetGroup exists in sourceGroup, if not, delete it.
-            foreach (SecurityPrinciple targetGroup in targetGroups)
-            {
-                if (sourceGroupsDisplayNames.Contains(targetGroup.displayName))
-                {
-                    continue;
-                }
-                else
-                {
-                    await DeleteSecurityPrincipleByDisplayName($"api/SecurityPrinciple?displayName={targetGroup.displayName}", targetClient);
-                }
-            }
-
             //Check if sourceGroup exists in TargetGroups, if not, then add it.
             foreach (SecurityPrinciple sourceGroup in sourceGroups)
             {
@@ -225,25 +197,9 @@ class Program
                 {
                     sourceGroup.Id = 0;
                     var content = JsonContent.Create<SecurityPrinciple>(sourceGroup);
-                    await CreateSecurityPrinciple($"api/SecurityPrinciple/CreateSecurityPrinciple", targetClient, content);
+                    await CreateSecurityPrinciple($"api/SecurityPrinciple/CreateSecurityPrinciple?DbContext=T", content);
                 }
             }
-
-
-            //Comparing sourceServicePrinciples with targetServicePrinciples.
-            //Check if targetServicePrinciple exists in sourceServicePrinciple, if not, delete it.
-            foreach (SecurityPrinciple targetServicePrinciple in targetServicePrinciples)
-            {
-                if (sourceServicePrinciplesDisplayNames.Contains(targetServicePrinciple.displayName))
-                {
-                    continue;
-                }
-                else
-                {
-                    await DeleteSecurityPrincipleByDisplayName($"api/SecurityPrinciple?displayName={targetServicePrinciple.displayName}", targetClient);
-                }
-            }
-
             //Check if sourceServicePrinciple exists in targetServicePrinciple, if not, then add it.
             foreach (SecurityPrinciple sourceServicePrinciple in sourceServicePrinciples)
             {
@@ -255,24 +211,27 @@ class Program
                 {
                     sourceServicePrinciple.Id = 0;
                     var content = JsonContent.Create<SecurityPrinciple>(sourceServicePrinciple);
-                    await CreateSecurityPrinciple($"api/SecurityPrinciple/CreateSecurityPrinciple", targetClient, content);
+                    await CreateSecurityPrinciple($"api/SecurityPrinciple/CreateSecurityPrinciple?DbContext=T", content);
                 }
             }
 
-
             // Group tables.
-            var sourceGroupMembers = await GetAllGroupMembers("api/GroupMember", sourceClient);
-            var targetGroupmembers = await GetAllGroupMembers("api/GroupMember", targetClient);
+
+            var sourceGroupMembers = await GetAllGroupMembers("api/GroupMember/GetAllGroupMembers?DbContext=S");
+            var targetGroupmembers = await GetAllGroupMembers("api/GroupMember/GetAllGroupMembers?DbContext=T");
 
             //Updated after partial sync.
-            var sourcePrinciplesUpdated = await GetSecurityPrinciples("api/SecurityPrinciple", sourceClient);
-            var targetPrinciplesUpdated = await GetSecurityPrinciples("api/SecurityPrinciple", targetClient);
+            var targetPrinciplesUpdated = await GetSecurityPrinciples("api/SecurityPrinciple/GetSecurityPrinciples?DbContext=T");
+            var targetUsersUpdated = targetPrinciplesUpdated.Where<SecurityPrinciple>(p => p.principleType == "user").ToList();
+            var targetGroupsUpdated = targetPrinciplesUpdated.Where<SecurityPrinciple>(p => p.principleType == "Group").ToList();
+            var targetServicePrinciplesUpdated = targetPrinciplesUpdated.Where<SecurityPrinciple>(p => p.principleType == "Service Principle").ToList();
 
-            //Get members of each group from both source and target, then compare the lists.
+            //Get members of each group from both source and target, then compare them on displayName lists.
             foreach (SecurityPrinciple group in sourceGroups)
             {
-                var sourceVGroupMembers = await GetAllOfAGroupsMembers($"api/vGroupMember/GetVGroupMembersByGroupName?groupDisplayName={group.displayName}", sourceClient);
-                var targetVGroupMembers = await GetAllOfAGroupsMembers($"api/vGroupMember/GetVGroupMembersByGroupName?groupDisplayName={group.displayName}", targetClient);
+                
+                var sourceVGroupMembers = await GetAllOfAGroupsMembers($"api/vGroupMember/GetVGroupMembersByGroupName?groupDisplayName={group.displayName}&DbContext=S");
+                var targetVGroupMembers = await GetAllOfAGroupsMembers($"api/vGroupMember/GetVGroupMembersByGroupName?groupDisplayName={group.displayName}&DbContext=T");
 
                 var targetVGroupMembersDisplayNames = targetVGroupMembers.Select(p => p.memberDisplayName).ToList();
                 var sourceVGroupMembersDisplayNames = sourceVGroupMembers.Select(p => p.memberDisplayName).ToList();
@@ -286,9 +245,27 @@ class Program
                     }
                     else
                     {
-                        await DeleteGroupMemberById($"api/GroupMember/DeleteGroupMember?groupId={vgroupMember.groupId}&securityPrincipleId={vgroupMember.memberId}", targetClient);
+                        await DeleteGroupMemberById($"api/GroupMember/DeleteGroupMember?groupId={vgroupMember.groupId}&securityPrincipleId={vgroupMember.memberId}&DbContext=T");
                     }
                 }
+
+                //Checks that all entries in TGroupMember table, have a corresponding SecurityPrinciple in the SP table. If not then delete.
+                var targetGroupMembersList = await GetAllGroupMembers("api/GroupMember/GetAllGroupMembers?DbContext=T");
+                var targetPrinciplesIdsUpdated = targetPrinciplesUpdated.Select(p => p.Id).ToList();
+                foreach (GroupMember groupmember in targetGroupMembersList)
+                {
+                    if(targetPrinciplesIdsUpdated.Contains(groupmember.securityPrincipleId))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        await DeleteGroupMemberById($"api/GroupMember/DeleteGroupMember?groupId={groupmember.groupId}&securityPrincipleId={groupmember.securityPrincipleId}&DbContext=T");
+                    }
+
+                }
+
+                //Groupmember table
 
                 //Adding group members that are in source, but aren't in target.
                 foreach (vGroupMembers vgroup in sourceVGroupMembers)
@@ -308,11 +285,55 @@ class Program
                         var XgroupName = vgroup.groupDisplayName;
                         //Using the displayName to get the Principle in Target Db. (This is to get the Id from the correct Db.)
                         var groupPrinciple = targetPrinciplesUpdated.Where(x => x.displayName == XgroupName).FirstOrDefault();
-                       
-                        await CreateGroupMember($"api/GroupMember/CreateGroupmember?groupId={groupPrinciple.Id}&securityPrincipleId={groupMemberToBeAdded.Id}", targetClient);
+
+                        await CreateGroupMember($"api/GroupMember/CreateGroupMember?groupId={groupPrinciple.Id}&securityPrincipleId={groupMemberToBeAdded.Id}&DbContext=T");
                     }
                 }
             }
+
+            //Deleting Security Principles
+
+            //Check if targetUser exists in sourceUsers, if not, delete it.
+            foreach (SecurityPrinciple targetUser in targetUsers)
+            {
+                if (sourceUsersDisplayNames.Contains(targetUser.displayName))
+                {
+                    continue;
+                }
+                else
+                {
+                    await DeleteSecurityPrincipleByDisplayName($"api/SecurityPrinciple/DeleteSecurityPrincipleByDisplayName?displayName={targetUser.displayName}&DbContext=T");
+                }
+            }
+            //Check if targetGroup exists in sourceGroup, if not, delete it.
+            foreach (SecurityPrinciple targetGroup in targetGroups)
+            {
+                if (sourceGroupsDisplayNames.Contains(targetGroup.displayName))
+                {
+                    continue;
+                }
+                else
+                {
+                    await DeleteSecurityPrincipleByDisplayName($"api/SecurityPrinciple/DeleteSecurityPrincipleByDisplayName?displayName={targetGroup.displayName}&DbContext=T");
+                }
+            }
+            //Check if targetServicePrinciple exists in sourceServicePrinciple, if not, delete it.
+            foreach (SecurityPrinciple targetServicePrinciple in targetServicePrinciples)
+            {
+                if (sourceServicePrinciplesDisplayNames.Contains(targetServicePrinciple.displayName))
+                {
+                    continue;
+                }
+                else
+                {
+                    await DeleteSecurityPrincipleByDisplayName($"api/SecurityPrinciple/DeleteSecurityPrincipleByDisplayName?displayName={targetServicePrinciple.displayName}&DbContext=T");
+                }
+            }
+
+            
+
+
+          
         }
         catch (Exception e)
         {
