@@ -151,7 +151,7 @@ class Program
             var targetGroups = targetPrinciples.Where<SecurityPrinciple>(p => p.principleType == "Group").ToList();
             var targetServicePrinciples = targetPrinciples.Where<SecurityPrinciple>(p => p.principleType == "Service Principle").ToList();
 
-            //Converts to displayName as that is unique and common across both Dbs.
+            //Convert to DisplayName as that is unique and common across both Dbs.
             var sourceUsersDisplayNames = sourceUsers.Select(p => p.displayName).ToList();
             var sourceGroupsDisplayNames = sourceGroups.Select(p => p.displayName).ToList();
             var sourceServicePrinciplesDisplayNames = sourceServicePrinciples.Select(p => p.displayName).ToList();
@@ -249,17 +249,17 @@ class Program
                     }
                     else
                     {
-                        //Getting the UNIQUE displayName of the vgroup member to be added.
-                        var XdisplayName = vgroup.memberDisplayName;
-                        //Using the displayName to get the Principle in Target Db. (This is to get the Id from the correct Db.)
-                        var groupMemberToBeAdded = targetPrinciplesUpdated.Where(x => x.displayName == XdisplayName).FirstOrDefault();
+                        //Getting the UNIQUE displayName of the vgroup Member to be added.
+                        var vGroupMemberDisplayName = vgroup.memberDisplayName;
+                        //Get the MemberPrinciple in Target Db. (This is to get the Id from the correct Db.)
+                        var GroupMemberToBeAdded = targetPrinciplesUpdated.Where(x => x.displayName == vGroupMemberDisplayName).FirstOrDefault();
 
                         //Getting the UNIQUE displayName of the vgroup Group to be added.
-                        var XgroupName = vgroup.groupDisplayName;
-                        //Using the displayName to get the Principle in Target Db. (This is to get the Id from the correct Db.)
-                        var groupPrinciple = targetPrinciplesUpdated.Where(x => x.displayName == XgroupName).FirstOrDefault();
+                        var vGroupGroupDisplayName = vgroup.groupDisplayName;
+                        //Using the DisplayName to get the GroupPrinciple in the Target Db. (This is to get the Id from the correct Db.)
+                        var GroupToBeAdded = targetPrinciplesUpdated.Where(x => x.displayName == vGroupGroupDisplayName).FirstOrDefault();
 
-                        await CreateGroupMember($"api/GroupMember/CreateGroupMember?GroupId={groupPrinciple.Id}&SecurityPrincipleId={groupMemberToBeAdded.Id}&DbContext=T");
+                        await CreateGroupMember($"api/GroupMember/CreateGroupMember?GroupId={GroupToBeAdded.Id}&SecurityPrincipleId={GroupMemberToBeAdded.Id}&DbContext=T");
                     }
 
                 }
